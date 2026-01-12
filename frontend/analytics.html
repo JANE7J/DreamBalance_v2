@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DreamBalance | Analytics</title>
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<!-- Shared CSS -->
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body class="text-white min-h-screen flex bg-[#0D0B14]">
+
+<!-- ================= SIDEBAR ================= -->
+<nav class="w-64 p-8 flex flex-col justify-between border-r border-white/5">
+    <div>
+        <div class="text-2xl font-bold mb-12 tracking-tight text-indigo-400">
+            DreamBalance
+        </div>
+        <ul class="space-y-2">
+            <li>
+                <a href="calendar.html" class="nav-link">Journal</a>
+            </li>
+            <li>
+                <a href="analytics.html" class="nav-link active">Analytics</a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- User Profile -->
+    <div class="flex items-center gap-4 p-4 bg-white/5 rounded-2xl">
+        <div id="user-initial"
+             class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center font-bold">
+            ?
+        </div>
+        <div class="overflow-hidden">
+            <p id="user-name" class="font-semibold truncate">Guest</p>
+            <p id="user-gender-display" class="text-xs text-gray-400"></p>
+        </div>
+    </div>
+</nav>
+
+<!-- ================= MAIN CONTENT ================= -->
+<main class="flex-1 bg-[#1A1820] m-4 rounded-3xl p-8 overflow-y-auto max-h-screen">
+
+    <!-- ================= HEADER ================= -->
+    <header class="mb-10">
+        <h1 class="text-3xl font-bold mb-2">Analytics Overview</h1>
+        <p class="text-gray-400 text-sm">
+            Insights generated from your logged dreams
+        </p>
+    </header>
+
+    <!-- ================= AI INSIGHT ================= -->
+    <section class="analytics-card mb-10">
+        <div class="flex items-start gap-3">
+            <span class="text-xl">🤖</span>
+            <div>
+                <h2 class="text-lg font-semibold text-indigo-400 mb-2">
+                    AI Insight
+                </h2>
+
+                <p id="ai-reasoning"
+                   class="text-gray-300 leading-relaxed mb-4">
+                    Loading AI insight...
+                </p>
+
+                <ul id="ai-recommendations"
+                    class="list-disc list-inside space-y-1 text-sm text-gray-400">
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= GRID ================= -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- ================= LEFT COLUMN ================= -->
+        <div class="lg:col-span-2 space-y-8">
+
+            <!-- Mental Sustainability Index -->
+            <section class="analytics-card flex items-center gap-8">
+                <div class="w-36 h-36 relative shrink-0">
+                    <canvas id="sustainability-chart"></canvas>
+                    <div id="sustainability-index"
+                         class="absolute inset-0 flex flex-col items-center justify-center font-bold text-center">
+                        <span class="text-3xl">--</span>
+                        <span class="text-xs text-gray-400">INDEX</span>
+                    </div>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold mb-2">
+                        Mental Sustainability Index
+                    </h2>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Measures how consistently you engage in dream journaling
+                        and self-reflection over time.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Emotion Frequency -->
+            <section class="analytics-card">
+                <h2 class="text-lg font-bold mb-1">
+                    Emotion Frequency
+                </h2>
+                <p class="text-sm text-gray-400 mb-4">
+                    Dreams logged in the last 7 days
+                </p>
+                <div class="h-56">
+                    <canvas id="emotion-chart"></canvas>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ================= RIGHT COLUMN ================= -->
+        <section class="analytics-card flex flex-col">
+            <h2 class="text-lg font-bold mb-1">
+                Mood Distribution
+            </h2>
+            <p class="text-sm text-gray-400 mb-6">
+                Based on all logged dreams
+            </p>
+
+            <div class="h-60 flex items-center justify-center mb-6">
+                <canvas id="state-chart"></canvas>
+            </div>
+
+            <div id="state-legend" class="space-y-3 text-sm"></div>
+        </section>
+
+    </div>
+
+</main>
+
+<!-- ================= USER SETUP MODAL ================= -->
+<div id="user-modal"
+     class="fixed inset-0 bg-black/90 flex items-center justify-center hidden z-[100]">
+
+    <div class="bg-[#1A1820] p-8 rounded-3xl border border-indigo-500/30 w-96">
+        <h2 class="text-2xl font-bold mb-2">Welcome 👋</h2>
+        <p class="text-gray-400 mb-6 text-sm">
+            Let’s set up your profile.
+        </p>
+
+        <input id="name-input"
+               class="modal-input mb-4"
+               placeholder="Full Name">
+
+        <select id="gender-input"
+                class="modal-input mb-6">
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+            <option value="PNTS">Prefer not to say</option>
+        </select>
+
+        <button onclick="saveUser()"
+                class="w-full bg-indigo-600 p-4 rounded-xl font-bold hover-glow">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Analytics Logic -->
+<script src="assets/js/analytics.js"></script>
+
+</body>
+</html>
