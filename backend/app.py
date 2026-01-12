@@ -206,6 +206,7 @@ def analytics(current_user_id):
 
     return jsonify({
         "state_distribution": state,
+        "mental_sustainability_index": total,
         "ai_agent": generate_ai_agent_response(current_user_id)
     })
 
