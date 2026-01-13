@@ -1,5 +1,5 @@
 // --- Core Application Logic for the Analytics Page ---
-const API_URL = "http://127.0.0.1:5001";
+const API_URL = "https://dreambalance-backend.onrender.com";
 let authHeader = {}; // Will be set on load
 
 document.addEventListener('DOMContentLoaded', () => {
