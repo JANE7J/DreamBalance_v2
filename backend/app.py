@@ -8,8 +8,11 @@ from database import get_db_connection
 from auth import hash_password, check_password, create_token, token_required, bcrypt
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}}, allow_headers=["Content-Type", "Authorization"])
-bcrypt.init_app(app)
+CORS(
+    app,
+    resources={r"/api/*": {"origins": "*"}},
+    supports_credentials=True
+)bcrypt.init_app(app)
 
 @app.route("/")
 def home():
@@ -17,8 +20,11 @@ def home():
 
 # ---------------- AUTH ---------------- #
 
-@app.route("/api/register", methods=["POST"])
+@app.route("/api/register", methods=["POST", "OPTIONS"])
 def register():
+    if request.method == "OPTIONS":
+        return jsonify({"ok": True}), 200
+
     data = request.get_json()
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -34,7 +40,7 @@ def register():
             )
         )
         conn.commit()
-    except conn.IntegrityError:
+    except Exception:
         return jsonify({"error": "User already exists"}), 409
     finally:
         conn.close()
@@ -43,8 +49,12 @@ def register():
     return jsonify({"token": token, "username": data["username"]}), 201
 
 
-@app.route("/api/login", methods=["POST"])
+
+@app.route("/api/login", methods=["POST", "OPTIONS"])
 def login():
+    if request.method == "OPTIONS":
+        return jsonify({"ok": True}), 200
+
     data = request.get_json()
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -59,7 +69,8 @@ def login():
     return jsonify({
         "token": create_token(user["id"]),
         "username": user["username"]
-    })
+    }), 200
+
 
 
 # ---------------- ENTRIES ---------------- #
