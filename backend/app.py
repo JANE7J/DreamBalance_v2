@@ -220,6 +220,11 @@ def analytics(current_user_id):
         "mental_sustainability_index": total,
         "ai_agent": generate_ai_agent_response(current_user_id)
     })
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
+
+    
 
 
 # ---------------- RUN ---------------- #
