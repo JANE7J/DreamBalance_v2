@@ -27,14 +27,15 @@ async function registerUser(event) {
             body: JSON.stringify({ username, email, password, gender })
         });
 
-        const contentType = response.headers.get("content-type");
+        // 🔹 Read raw text first
+        const rawText = await response.text();
 
-        // 🔥 IMPORTANT FIX
-        if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Server is waking up. Please wait 5 seconds and try again.");
+        let data;
+        try {
+            data = JSON.parse(rawText);
+        } catch {
+            throw new Error("Backend error (non-JSON response). Check Render logs.");
         }
-
-        const data = await response.json();
 
         if (!response.ok) {
             throw new Error(data.error || "Registration failed");
@@ -68,21 +69,17 @@ async function loginUser(event) {
             body: JSON.stringify({ email, password })
         });
 
-        const contentType = response.headers.get("content-type");
+        const rawText = await response.text();
 
-        // 🔥 IMPORTANT FIX
-        if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Server is waking up. Please wait 5 seconds and try again.");
+        let data;
+        try {
+            data = JSON.parse(rawText);
+        } catch {
+            throw new Error("Backend error (non-JSON response). Check Render logs.");
         }
-
-        const data = await response.json();
 
         if (!response.ok) {
             throw new Error(data.error || "Login failed");
-        }
-
-        if (!data.token || !data.username) {
-            throw new Error("Invalid server response");
         }
 
         localStorage.setItem("authToken", data.token);
