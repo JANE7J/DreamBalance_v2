@@ -91,7 +91,6 @@ async function loginUser(event) {
         window.location.href = "calendar.html";
 
     } catch (error) {
-        console.error(error);
         errorEl.textContent = error.message;
         errorEl.classList.remove("hidden");
     }
