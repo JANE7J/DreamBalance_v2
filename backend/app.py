@@ -5,6 +5,9 @@ import sqlite3
 import os
 
 app = Flask(__name__)
+from auth import init_bcrypt
+init_bcrypt(app)
+
 CORS(app)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "dreambalance.db")
