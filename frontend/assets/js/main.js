@@ -94,14 +94,27 @@ async function renderCalendar() {
 
 async function fetchMonthlyData(year, month) {
     const res = await fetch(
-        `${API_URL}/api/entries/calendar?year=${year}&month=${month}`,
-        { headers: authHeader }
-    );
+    `${API_URL}/api/entries/calendar?year=${year}&month=${month}`,
+    { headers: authHeader }
+);
 
-    if (res.status === 401) logout();
+if (res.status === 401) {
+    logout();
+    return;
+}
 
-    const entries = await res.json();
-    monthlyEntries = {};
+const text = await res.text();
+let entries;
+
+try {
+    entries = JSON.parse(text);
+} catch {
+    console.error("Invalid response from server:", text);
+    return;
+}
+
+monthlyEntries = {};
+
 
     entries.forEach(e => {
         if (!monthlyEntries[e.entry_date]) monthlyEntries[e.entry_date] = [];
@@ -182,15 +195,26 @@ async function saveNewEntry() {
     if (!isEdit) payload.entry_date = selectedDateStr;
 
     const res = await fetch(url, {
-        method: isEdit ? "PUT" : "POST",
-        headers: { ...authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
+    method: isEdit ? "PUT" : "POST",
+    headers: { ...authHeader, "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+});
 
-    if (!res.ok) {
-        alert("Save failed");
-        return;
-    }
+const text = await res.text();
+let data;
+
+try {
+    data = JSON.parse(text);
+} catch {
+    alert("Server error. Please try again.");
+    return;
+}
+
+if (!res.ok) {
+    alert(data.error || "Save failed");
+    return;
+}
+
 
     editingEntryId = null;
     selectedMood = null;
