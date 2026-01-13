@@ -18,39 +18,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchAnalyticsData() {
     try {
-        const response = await fetch(`${API_URL}/api/analytics`, { headers: authHeader });
-        if (response.status === 401) { logout(); } // Token expired or invalid
-        if (!response.ok) throw new Error('Failed to fetch analytics');
-        
-        const data = await response.json();
+        const response = await fetch(`${API_URL}/api/analytics`, {
+            headers: authHeader
+        });
+
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+
+        const text = await response.text(); // 👈 SAFE READ
+        let data;
+
+        try {
+            data = JSON.parse(text);
+        } catch {
+            throw new Error("Server returned invalid response");
+        }
+
+        if (!response.ok) {
+            throw new Error(data.error || "Failed to fetch analytics");
+        }
+
         renderSustainabilityChart(data.mental_sustainability_index);
-renderStateChart(data.state_distribution);
-renderStateLegend(data.state_distribution);
+        renderStateChart(data.state_distribution);
+        renderStateLegend(data.state_distribution);
 
+        if (data.ai_agent && data.ai_agent.ai_insight) {
+            renderEmotionChart(
+                data.ai_agent.week_summary?.emotion_summary || {}
+            );
+            renderAIInsight(data.ai_agent.ai_insight);
+        } else {
+            document.getElementById('ai-reasoning').textContent =
+                "Not enough dream data this week to generate AI insight.";
+        }
 
-if (data.ai_agent && data.ai_agent.ai_insight) {
-    console.log("AI Insight received:", data.ai_agent.ai_insight);
-
-    renderEmotionChart(
-        data.ai_agent.week_summary?.emotion_summary || {}
-    );
-
-    renderAIInsight(data.ai_agent.ai_insight);
-} else {
-    document.getElementById('ai-reasoning').textContent =
-        "Not enough dream data this week to generate AI insight.";
-}
-
-
-
-        // Assuming other chart functions exist
-        // renderEmotionChart(data.emotion_frequency);
-        // renderConsistencyChart(data.sleep_consistency);
-        
     } catch (error) {
         console.error("Error fetching analytics data:", error);
+        document.getElementById('ai-reasoning').textContent =
+            "Unable to load analytics at the moment.";
     }
 }
+
 
 // --- User Profile & Auth ---
 function initializeUserProfile() {
