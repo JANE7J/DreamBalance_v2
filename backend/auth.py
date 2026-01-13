@@ -5,6 +5,9 @@ from functools import wraps
 from flask import request, jsonify
 
 bcrypt = Bcrypt()
+def init_bcrypt(app):
+    bcrypt.init_app(app)
+
 # IMPORTANT: In a real production app, this secret key should be stored securely
 # and not hardcoded, e.g., in an environment variable.
 SECRET_KEY = "your-super-secret-key-for-jwt"
