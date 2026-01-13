@@ -5,3 +5,4 @@ torch
 sentencepiece
 Flask-Bcrypt
 PyJWT
+gunicorn
