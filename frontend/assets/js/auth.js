@@ -27,14 +27,14 @@ async function registerUser(event) {
             body: JSON.stringify({ username, email, password, gender })
         });
 
-        const text = await response.text();
-        let data;
+        const contentType = response.headers.get("content-type");
 
-        try {
-            data = JSON.parse(text);
-        } catch {
-            throw new Error("Server returned invalid response");
+        // 🔥 IMPORTANT FIX
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server is waking up. Please wait 5 seconds and try again.");
         }
+
+        const data = await response.json();
 
         if (!response.ok) {
             throw new Error(data.error || "Registration failed");
@@ -68,14 +68,14 @@ async function loginUser(event) {
             body: JSON.stringify({ email, password })
         });
 
-        const text = await response.text();
-        let data;
+        const contentType = response.headers.get("content-type");
 
-        try {
-            data = JSON.parse(text);
-        } catch {
-            throw new Error("Server returned invalid response");
+        // 🔥 IMPORTANT FIX
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server is waking up. Please wait 5 seconds and try again.");
         }
+
+        const data = await response.json();
 
         if (!response.ok) {
             throw new Error(data.error || "Login failed");
