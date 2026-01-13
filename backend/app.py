@@ -1,234 +1,102 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from datetime import datetime, timedelta
-from agent import generate_ai_agent_response
+const API_URL = "https://dreambalance-backend.onrender.com";
 
-from models import create_tables
-from database import get_db_connection
-from auth import hash_password, check_password, create_token, token_required, bcrypt
+/* ============================
+   EXPOSE FUNCTIONS GLOBALLY
+   ============================ */
+window.toggleForms = toggleForms;
+window.registerUser = registerUser;
+window.loginUser = loginUser;
 
-app = Flask(__name__)
-CORS(
-    app,
-    resources={r"/api/*": {"origins": "*"}},
-    supports_credentials=True
-)bcrypt.init_app(app)
+// ---------------- TOGGLE FORMS ----------------
+function toggleForms() {
+    document.getElementById("login-form").classList.toggle("hidden");
+    document.getElementById("register-form").classList.toggle("hidden");
+    document.getElementById("login-error").classList.add("hidden");
+    document.getElementById("register-error").classList.add("hidden");
+}
 
-@app.route("/")
-def home():
-    return "DreamBalance v2 Backend is Running"
+// ---------------- REGISTER ----------------
+async function registerUser(event) {
+    event.preventDefault();
 
-# ---------------- AUTH ---------------- #
+    const username = document.getElementById("register-username").value.trim();
+    const email = document.getElementById("register-email").value.trim();
+    const password = document.getElementById("register-password").value.trim();
+    const gender = document.getElementById("register-gender").value;
 
-@app.route("/api/register", methods=["POST", "OPTIONS"])
-def register():
-    if request.method == "OPTIONS":
-        return jsonify({"ok": True}), 200
+    const errorEl = document.getElementById("register-error");
+    errorEl.classList.add("hidden");
 
-    data = request.get_json()
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    try {
+        const response = await fetch(`${API_URL}/api/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, email, password, gender })
+        });
 
-    try:
-        cursor.execute(
-            "INSERT INTO User (username, email, password_hash, gender) VALUES (?, ?, ?, ?)",
-            (
-                data["username"],
-                data["email"],
-                hash_password(data["password"]),
-                data.get("gender")
-            )
-        )
-        conn.commit()
-    except Exception:
-        return jsonify({"error": "User already exists"}), 409
-    finally:
-        conn.close()
+        const contentType = response.headers.get("content-type");
 
-    token = create_token(cursor.lastrowid)
-    return jsonify({"token": token, "username": data["username"]}), 201
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server is waking up. Please wait 5 seconds and try again.");
+        }
 
+        const data = await response.json();
 
+        if (!response.ok) {
+            throw new Error(data.error || "Registration failed");
+        }
 
-@app.route("/api/login", methods=["POST", "OPTIONS"])
-def login():
-    if request.method == "OPTIONS":
-        return jsonify({"ok": True}), 200
+        localStorage.setItem("authToken", data.token);
+        localStorage.setItem("userName", data.username);
 
-    data = request.get_json()
-    conn = get_db_connection()
-    cursor = conn.cursor()
+        window.location.href = "calendar.html";
 
-    cursor.execute("SELECT * FROM User WHERE email = ?", (data["email"],))
-    user = cursor.fetchone()
-    conn.close()
+    } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.remove("hidden");
+    }
+}
 
-    if not user or not check_password(user["password_hash"], data["password"]):
-        return jsonify({"error": "Invalid credentials"}), 401
+// ---------------- LOGIN ----------------
+async function loginUser(event) {
+    event.preventDefault();
 
-    return jsonify({
-        "token": create_token(user["id"]),
-        "username": user["username"]
-    }), 200
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value.trim();
 
+    const errorEl = document.getElementById("login-error");
+    errorEl.classList.add("hidden");
 
+    try {
+        const response = await fetch(`${API_URL}/api/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
 
-# ---------------- ENTRIES ---------------- #
+        const contentType = response.headers.get("content-type");
 
-@app.route("/api/entries", methods=["POST"])
-@token_required
-def add_entry(current_user_id):
-    data = request.get_json()
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server is waking up. Please wait 5 seconds and try again.");
+        }
 
-    title = data.get("title", "").strip()
-    description = data.get("description", "").strip()
-    mood = data.get("mood", "").strip()
-    entry_date = data.get("entry_date")
+        const data = await response.json();
 
-    if not title or not description or not mood or not entry_date:
-        return jsonify({"error": "Missing required fields"}), 400
+        if (!response.ok) {
+            throw new Error(data.error || "Login failed");
+        }
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+        if (!data.token || !data.username) {
+            throw new Error("Invalid server response");
+        }
 
-    cursor.execute("""
-        INSERT INTO DreamJournal (
-            user_id,
-            entry_date,
-            user_title,
-            dream_text,
-            feeling_after_waking,
-            dominant_emotion,
-            created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    """, (
-        current_user_id,
-        entry_date,
-        title,
-        description,
-        mood,
-        mood
-    ))
+        localStorage.setItem("authToken", data.token);
+        localStorage.setItem("userName", data.username);
 
-    conn.commit()
-    conn.close()
+        window.location.href = "calendar.html";
 
-    return jsonify({"message": "Entry added"}), 201
-
-
-@app.route("/api/entries/calendar", methods=["GET"])
-@token_required
-def get_calendar_entries(current_user_id):
-    year = request.args.get("year")
-    month = request.args.get("month").zfill(2)
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT
-            id,
-            entry_date,
-            user_title,
-            COALESCE(dream_text, '') AS dream_text,
-            COALESCE(feeling_after_waking, 'Unknown') AS feeling_after_waking,
-            COALESCE(dominant_emotion, 'Unknown') AS dominant_emotion
-        FROM DreamJournal
-        WHERE user_id = ?
-          AND strftime('%Y', entry_date) = ?
-          AND strftime('%m', entry_date) = ?
-        ORDER BY entry_date DESC, id DESC
-    """, (current_user_id, year, month))
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    return jsonify([dict(row) for row in rows])
-
-
-@app.route("/api/entries/<int:entry_id>", methods=["PUT"])
-@token_required
-def update_entry(current_user_id, entry_id):
-    data = request.get_json()
-
-    title = data.get("title", "").strip()
-    description = data.get("description", "").strip()
-    mood = data.get("mood", "").strip()
-
-    if not title or not description or not mood:
-        return jsonify({"error": "Missing fields"}), 400
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE DreamJournal
-        SET
-            user_title = ?,
-            dream_text = ?,
-            feeling_after_waking = ?,
-            dominant_emotion = ?
-        WHERE id = ? AND user_id = ?
-    """, (
-        title,
-        description,
-        mood,
-        mood,
-        entry_id,
-        current_user_id
-    ))
-
-    conn.commit()
-    conn.close()
-
-    return jsonify({"message": "Entry updated"})
-
-
-# ---------------- ANALYTICS ---------------- #
-
-@app.route("/api/analytics", methods=["GET"])
-@token_required
-def analytics(current_user_id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT dominant_emotion, COUNT(*) as count
-        FROM DreamJournal
-        WHERE user_id = ?
-        GROUP BY dominant_emotion
-    """, (current_user_id,))
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    calm = {"Happy","Peaceful","Energized","Relaxed","Refreshed","Content","Neutral"}
-    state = {"Calm State": 0, "Stress State": 0}
-
-    for r in rows:
-        if r["dominant_emotion"] in calm:
-            state["Calm State"] += r["count"]
-        else:
-            state["Stress State"] += r["count"]
-
-    total = sum(state.values()) or 1
-    for k in state:
-        state[k] = round(state[k] * 100 / total)
-
-    return jsonify({
-        "state_distribution": state,
-        "mental_sustainability_index": total,
-        "ai_agent": generate_ai_agent_response(current_user_id)
-    })
-@app.route("/api/health", methods=["GET"])
-def health():
-    return jsonify({"status": "ok"}), 200
-
-    
-
-
-# ---------------- RUN ---------------- #
-
-if __name__ == "__main__":
-    create_tables()
-    app.run(debug=True, port=5001)
+    } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.remove("hidden");
+    }
+}
