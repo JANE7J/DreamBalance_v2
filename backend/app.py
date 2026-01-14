@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from auth import hash_password, check_password, create_token, bcrypt
 from models import create_tables
+from auth import token_required
 import sqlite3
 import os
 
@@ -109,6 +110,36 @@ def login():
     except Exception as e:
         print("LOGIN ERROR:", e)
         return jsonify({"error": "Internal server error"}), 500
+
+@app.route("/api/entries/calendar", methods=["GET"])
+@token_required
+def get_calendar_entries(user_id):
+    year = request.args.get("year")
+    month = request.args.get("month")
+
+    if not year or not month:
+        return jsonify([])
+
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""
+        SELECT id,
+               entry_date,
+               user_title,
+               dream_text,
+               feeling_after_waking,
+               dominant_emotion
+        FROM DreamJournal
+        WHERE user_id = ?
+          AND strftime('%Y', entry_date) = ?
+          AND strftime('%m', entry_date) = ?
+    """, (user_id, year, month.zfill(2)))
+
+    rows = cursor.fetchall()
+
+    return jsonify([dict(row) for row in rows])
+
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
