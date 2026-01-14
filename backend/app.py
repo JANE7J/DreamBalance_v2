@@ -1,8 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from auth import hash_password, check_password, create_token, bcrypt
+from auth import hash_password, check_password, create_token, bcrypt, token_required
 from models import create_tables
-from auth import token_required
 import sqlite3
 import os
 
@@ -34,7 +33,6 @@ def home():
 def register():
     try:
         data = request.get_json()
-        print("REGISTER DATA:", data)
 
         username = data.get("username")
         email = data.get("email")
@@ -79,7 +77,6 @@ def register():
 def login():
     try:
         data = request.get_json()
-        print("LOGIN DATA:", data)
 
         email = data.get("email")
         password = data.get("password")
@@ -111,6 +108,7 @@ def login():
         print("LOGIN ERROR:", e)
         return jsonify({"error": "Internal server error"}), 500
 
+# ---------------- CALENDAR FETCH ----------------
 @app.route("/api/entries/calendar", methods=["GET"])
 @token_required
 def get_calendar_entries(user_id):
@@ -140,48 +138,13 @@ def get_calendar_entries(user_id):
 
     return jsonify([dict(row) for row in rows])
 
-
+# ---------------- CREATE ENTRY ----------------
 @app.route("/api/entries", methods=["POST"])
 @token_required
 def create_entry(user_id):
     data = request.get_json()
 
     entry_date = data.get("entry_date")
-    dream_text = data.get("description")
-    feeling = data.get("mood")
-
-    if not entry_date or not feeling:
-        return jsonify({"error": "Missing fields"}), 400
-
-    db = get_db()
-    cursor = db.cursor()
-
-    cursor.execute("""
-        INSERT INTO dream_journal (
-            user_id, entry_date, dream_text, feeling_after_waking, dominant_emotion
-        )
-        VALUES (?, ?, ?, ?, ?)
-    """, (
-        user_id,
-        entry_date,
-        dream_text,
-        feeling,
-        feeling
-    ))
-
-    db.commit()
-    db.close()
-
-    return jsonify({"message": "Entry created"}), 201
-
-
-@app.route("/api/entries", methods=["POST"])
-@token_required
-def create_entry(user_id):
-    data = request.get_json()
-
-    entry_date = data.get("entry_date")
-    title = data.get("title")
     description = data.get("description")
     mood = data.get("mood")
 
@@ -201,9 +164,6 @@ def create_entry(user_id):
     db.close()
 
     return jsonify({"message": "Entry saved"}), 201
-
-
-
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
