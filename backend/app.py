@@ -7,8 +7,6 @@ from auth import bcrypt
 from models import create_tables
 
 app = Flask(__name__)
-from auth import init_bcrypt
-init_bcrypt(app)
 
 CORS(app)
 bcrypt.init_app(app)
