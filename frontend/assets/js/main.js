@@ -145,7 +145,7 @@ function selectDate(day, month, year) {
         list.innerHTML += `
             <div class="p-4 rounded-lg bg-black/20 hover:bg-white/10 cursor-pointer"
                  onclick="openEditEntry(${entry.id})">
-                <p class="font-bold">${entry.user_title}</p>
+                <p class="font-bold">Dream Entry</p>
                 <p class="text-sm text-gray-400">${entry.feeling_after_waking}</p>
                 <p class="text-xs text-gray-500 mt-1 line-clamp-2">
                     ${entry.dream_text || "No description"}
