@@ -126,7 +126,6 @@ def get_calendar_entries(user_id):
     cursor.execute("""
         SELECT id,
                entry_date,
-               user_title,
                dream_text,
                feeling_after_waking,
                dominant_emotion
@@ -140,6 +139,41 @@ def get_calendar_entries(user_id):
     db.close()
 
     return jsonify([dict(row) for row in rows])
+
+
+@app.route("/api/entries", methods=["POST"])
+@token_required
+def create_entry(user_id):
+    data = request.get_json()
+
+    entry_date = data.get("entry_date")
+    dream_text = data.get("description")
+    feeling = data.get("mood")
+
+    if not entry_date or not feeling:
+        return jsonify({"error": "Missing fields"}), 400
+
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""
+        INSERT INTO dream_journal (
+            user_id, entry_date, dream_text, feeling_after_waking, dominant_emotion
+        )
+        VALUES (?, ?, ?, ?, ?)
+    """, (
+        user_id,
+        entry_date,
+        dream_text,
+        feeling,
+        feeling
+    ))
+
+    db.commit()
+    db.close()
+
+    return jsonify({"message": "Entry created"}), 201
+
 
 @app.route("/api/entries", methods=["POST"])
 @token_required
