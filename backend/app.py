@@ -3,12 +3,16 @@ from flask_cors import CORS
 from auth import hash_password, check_password, create_token
 import sqlite3
 import os
+from auth import bcrypt
+from models import create_tables
 
 app = Flask(__name__)
 from auth import init_bcrypt
 init_bcrypt(app)
 
 CORS(app)
+bcrypt.init_app(app)
+create_tables()
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "dreambalance.db")
 
@@ -17,6 +21,8 @@ def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
 
 # ---------------- HEALTH CHECK ----------------
 @app.route("/")
