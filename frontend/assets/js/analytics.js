@@ -1,20 +1,22 @@
 // --- Core Application Logic for the Analytics Page ---
 const API_URL = "https://dreambalance-backend.onrender.com";
-let authHeader = {}; // Will be set on load
+let authHeader = {};
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
     // --- Authentication Check ---
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem("authToken");
     if (!token) {
-        window.location.href = 'index.html'; // Redirect to login if not authenticated
-        return; // Stop further execution
+        window.location.href = "index.html";
+        return;
     }
-    authHeader = { 'Authorization': `Bearer ${token}` };
 
-    // --- Initial Setup ---
-    fetchAnalyticsData();
+    authHeader = { Authorization: `Bearer ${token}` };
+
     initializeUserProfile();
+    fetchAnalyticsData();
 });
+
+// ---------------- FETCH ANALYTICS ----------------
 
 async function fetchAnalyticsData() {
     try {
@@ -27,160 +29,167 @@ async function fetchAnalyticsData() {
             return;
         }
 
-        const text = await response.text(); // 👈 SAFE READ
+        const text = await response.text();
         let data;
 
         try {
             data = JSON.parse(text);
         } catch {
-            throw new Error("Server returned invalid response");
+            throw new Error("Invalid JSON from server");
         }
 
         if (!response.ok) {
             throw new Error(data.error || "Failed to fetch analytics");
         }
 
-        renderSustainabilityChart(data.mental_sustainability_index);
-        renderStateChart(data.state_distribution);
-        renderStateLegend(data.state_distribution);
+        // ✅ BACKEND-CORRECT KEYS
+        renderSustainabilityChart(data.mental_index);
+        renderStateChart(data.mood_distribution);
+        renderStateLegend(data.mood_distribution);
+        renderEmotionChart(data.emotion_frequency);
 
-        if (data.ai_agent && data.ai_agent.ai_insight) {
-            renderEmotionChart(
-                data.ai_agent.week_summary?.emotion_summary || {}
-            );
-            renderAIInsight(data.ai_agent.ai_insight);
-        } else {
-            document.getElementById('ai-reasoning').textContent =
-                "Not enough dream data this week to generate AI insight.";
-        }
+        // AI Insight placeholder (backend doesn't send AI yet)
+        document.getElementById("ai-reasoning").textContent =
+            "AI insights will appear once enough dreams are logged.";
 
     } catch (error) {
-        console.error("Error fetching analytics data:", error);
-        document.getElementById('ai-reasoning').textContent =
+        console.error("Analytics error:", error);
+        document.getElementById("ai-reasoning").textContent =
             "Unable to load analytics at the moment.";
     }
 }
 
+// ---------------- USER PROFILE ----------------
 
-// --- User Profile & Auth ---
 function initializeUserProfile() {
-    const username = localStorage.getItem('userName');
-    if (username) {
-        document.getElementById('user-name').textContent = username;
-        document.getElementById('user-initial').textContent = username.charAt(0).toUpperCase();
-    } else {
-        logout(); // If no username, something is wrong, force logout.
+    const username = localStorage.getItem("userName");
+    if (!username) {
+        logout();
+        return;
     }
+
+    document.getElementById("user-name").textContent = username;
+    document.getElementById("user-initial").textContent =
+        username.charAt(0).toUpperCase();
 }
 
 function logout() {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userName');
-    window.location.href = 'index.html';
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userName");
+    window.location.href = "index.html";
 }
 
-// --- Chart Rendering Functions ---
-// (Assume chart rendering functions are here as before)
-function renderSustainabilityChart(index) {
-    const ctx = document.getElementById('sustainability-chart').getContext('2d');
-    document.getElementById('sustainability-index').innerHTML = `<span class="text-4xl">${index}</span><span>INDEX</span>`;
-    new Chart(ctx, { /* ... chart config ... */ });
-}
-function renderStateChart(distribution) {
-    const ctx = document.getElementById('state-chart').getContext('2d');
+// ---------------- CHARTS ----------------
+
+function renderSustainabilityChart(index = 0) {
+    const ctx = document
+        .getElementById("sustainability-chart")
+        .getContext("2d");
+
+    document.getElementById("sustainability-index").innerHTML = `
+        <span class="text-4xl">${index}</span>
+        <span class="text-xs text-gray-400">INDEX</span>
+    `;
 
     new Chart(ctx, {
-        type: 'doughnut',
+        type: "doughnut",
         data: {
-            labels: Object.keys(distribution),
+            labels: ["Progress", "Remaining"],
             datasets: [{
-                data: Object.values(distribution),
-                backgroundColor: ['#22c55e', '#ef4444']
+                data: [index, 100 - index],
+                backgroundColor: ["#6366f1", "#2a2a35"],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            cutout: "80%",
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+function renderStateChart(distribution = {}) {
+    const ctx = document.getElementById("state-chart").getContext("2d");
+
+    const labels = Object.keys(distribution);
+    const values = Object.values(distribution);
+
+    if (!labels.length) return;
+
+    new Chart(ctx, {
+        type: "doughnut",
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: [
+                    "#22c55e",
+                    "#6366f1",
+                    "#ef4444",
+                    "#f59e0b",
+                    "#14b8a6",
+                    "#a855f7"
+                ]
             }]
         },
         options: {
             responsive: true,
             plugins: {
                 legend: {
-                    labels: {
-                        color: '#e5e7eb'
-                    }
+                    labels: { color: "#e5e7eb" }
                 }
             }
         }
     });
 }
 
-
-function renderEmotionChart(emotionSummary) {
-    const ctx = document.getElementById('emotion-chart').getContext('2d');
+function renderEmotionChart(emotionSummary = {}) {
+    const ctx = document.getElementById("emotion-chart").getContext("2d");
 
     const labels = Object.keys(emotionSummary);
     const values = Object.values(emotionSummary);
 
+    if (!labels.length) return;
+
     new Chart(ctx, {
-        type: 'bar',
+        type: "bar",
         data: {
             labels,
             datasets: [{
-                label: 'Emotion Frequency',
+                label: "Emotion Frequency",
                 data: values,
-                backgroundColor: '#6366f1'
+                backgroundColor: "#6366f1"
             }]
         },
         options: {
             responsive: true,
-            plugins: {
-                legend: { display: false }
-            },
+            plugins: { legend: { display: false } },
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: { color: '#9ca3af' }
+                    ticks: { color: "#9ca3af" }
                 },
                 x: {
-                    ticks: { color: '#9ca3af' }
+                    ticks: { color: "#9ca3af" }
                 }
             }
         }
     });
 }
-function renderStateLegend(distribution) {
-    const legend = document.getElementById('state-legend');
-    legend.innerHTML = '';
+
+function renderStateLegend(distribution = {}) {
+    const legend = document.getElementById("state-legend");
+    legend.innerHTML = "";
 
     for (const [state, value] of Object.entries(distribution)) {
         legend.innerHTML += `
             <div class="flex justify-between text-sm">
                 <span>${state}</span>
-                <span class="text-indigo-400">${value}%</span>
+                <span class="text-indigo-400">${value}</span>
             </div>
         `;
     }
 }
-
-function renderAIInsight(aiInsight) {
-    const reasoningEl = document.getElementById('ai-reasoning');
-    const recommendationsEl = document.getElementById('ai-recommendations');
-
-    if (!aiInsight || !aiInsight.reasoning) {
-        reasoningEl.textContent =
-            "AI needs more dream entries to generate insights.";
-        return;
-    }
-
-    reasoningEl.textContent = aiInsight.reasoning;
-
-    recommendationsEl.innerHTML = '';
-
-    if (Array.isArray(aiInsight.recommendations)) {
-        aiInsight.recommendations.forEach(rec => {
-            const li = document.createElement('li');
-            li.textContent = rec;
-            recommendationsEl.appendChild(li);
-        });
-    }
-}
-
-
-
