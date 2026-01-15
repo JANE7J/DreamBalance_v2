@@ -42,15 +42,18 @@ async function fetchAnalyticsData() {
             throw new Error(data.error || "Failed to fetch analytics");
         }
 
-        // ✅ BACKEND-CORRECT KEYS
+        // ---------------- RENDER ALL ANALYTICS ----------------
         renderSustainabilityChart(data.mental_index);
-        renderStateChart(data.mood_distribution);
-        renderStateLegend(data.mood_distribution);
+
+        // Calm vs Stress (RIGHT DONUT)
+        renderStateChart(data.calm_stress_distribution);
+        renderStateLegend(data.calm_stress_distribution);
+
+        // Emotion frequency (BAR)
         renderEmotionChart(data.emotion_frequency);
 
-        // AI Insight placeholder (backend doesn't send AI yet)
-        document.getElementById("ai-reasoning").textContent =
-            "AI insights will appear once enough dreams are logged.";
+        // AI Insight
+        renderAIInsight(data.ai_insight);
 
     } catch (error) {
         console.error("Analytics error:", error);
@@ -111,6 +114,7 @@ function renderSustainabilityChart(index = 0) {
     });
 }
 
+// Calm vs Stress donut
 function renderStateChart(distribution = {}) {
     const ctx = document.getElementById("state-chart").getContext("2d");
 
@@ -125,14 +129,9 @@ function renderStateChart(distribution = {}) {
             labels,
             datasets: [{
                 data: values,
-                backgroundColor: [
-                    "#22c55e",
-                    "#6366f1",
-                    "#ef4444",
-                    "#f59e0b",
-                    "#14b8a6",
-                    "#a855f7"
-                ]
+                backgroundColor: ["#22c55e", "#ef4444"],
+                borderWidth: 2,
+                borderColor: "#0f0f17"
             }]
         },
         options: {
@@ -146,6 +145,7 @@ function renderStateChart(distribution = {}) {
     });
 }
 
+// Emotion Frequency bar chart
 function renderEmotionChart(emotionSummary = {}) {
     const ctx = document.getElementById("emotion-chart").getContext("2d");
 
@@ -180,6 +180,7 @@ function renderEmotionChart(emotionSummary = {}) {
     });
 }
 
+// Legend for Calm / Stress
 function renderStateLegend(distribution = {}) {
     const legend = document.getElementById("state-legend");
     legend.innerHTML = "";
@@ -188,8 +189,32 @@ function renderStateLegend(distribution = {}) {
         legend.innerHTML += `
             <div class="flex justify-between text-sm">
                 <span>${state}</span>
-                <span class="text-indigo-400">${value}</span>
+                <span class="text-indigo-400">${value}%</span>
             </div>
         `;
+    }
+}
+
+// ---------------- AI INSIGHT ----------------
+
+function renderAIInsight(aiInsight) {
+    const reasoningEl = document.getElementById("ai-reasoning");
+    const recommendationsEl = document.getElementById("ai-recommendations");
+
+    if (!aiInsight || !aiInsight.reasoning) {
+        reasoningEl.textContent =
+            "Not enough dream data to generate insights.";
+        return;
+    }
+
+    reasoningEl.textContent = aiInsight.reasoning;
+    recommendationsEl.innerHTML = "";
+
+    if (Array.isArray(aiInsight.recommendations)) {
+        aiInsight.recommendations.forEach(rec => {
+            const li = document.createElement("li");
+            li.textContent = rec;
+            recommendationsEl.appendChild(li);
+        });
     }
 }
