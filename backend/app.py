@@ -140,7 +140,7 @@ def get_calendar_entries(user_id):
 
 @app.route("/api/analytics", methods=["GET"])
 @token_required
-def analytics(user_id):
+def get_analytics(user_id):
     db = get_db()
     cursor = db.cursor()
 
@@ -149,7 +149,7 @@ def analytics(user_id):
         "SELECT COUNT(*) as total FROM dream_journal WHERE user_id = ?",
         (user_id,)
     )
-    total = cursor.fetchone()["total"]
+    total_dreams = cursor.fetchone()["total"]
 
     # Mood distribution
     cursor.execute("""
@@ -158,14 +158,37 @@ def analytics(user_id):
         WHERE user_id = ?
         GROUP BY dominant_emotion
     """, (user_id,))
-    moods = [dict(row) for row in cursor.fetchall()]
+    mood_rows = cursor.fetchall()
+
+    mood_distribution = {
+        row["dominant_emotion"]: row["count"] for row in mood_rows
+    }
+
+    # Last 7 days emotion frequency
+    cursor.execute("""
+        SELECT dominant_emotion, COUNT(*) as count
+        FROM dream_journal
+        WHERE user_id = ?
+        AND entry_date >= date('now','-7 day')
+        GROUP BY dominant_emotion
+    """, (user_id,))
+    recent_rows = cursor.fetchall()
+
+    emotion_frequency = {
+        row["dominant_emotion"]: row["count"] for row in recent_rows
+    }
 
     db.close()
 
+    # Simple mental sustainability index
+    mental_index = min(total_dreams * 5, 100)
+
     return jsonify({
-        "total_dreams": total,
-        "mood_distribution": moods
+        "mental_index": mental_index,
+        "mood_distribution": mood_distribution,
+        "emotion_frequency": emotion_frequency
     })
+
 
 
 # ---------------- CREATE ENTRY ----------------
