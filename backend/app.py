@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from auth import hash_password, check_password, create_token, bcrypt, token_required
 from models import create_tables
+from agent import generate_ai_agent_response
 import sqlite3
 import os
 
@@ -138,6 +139,7 @@ def get_calendar_entries(user_id):
 
     return jsonify([dict(row) for row in rows])
 
+# ---------------- ANALYTICS (FINAL VERSION) ----------------
 @app.route("/api/analytics", methods=["GET"])
 @token_required
 def get_analytics(user_id):
@@ -151,7 +153,7 @@ def get_analytics(user_id):
     )
     total_dreams = cursor.fetchone()["total"]
 
-    # Mood distribution
+    # Mood distribution (all time)
     cursor.execute("""
         SELECT dominant_emotion, COUNT(*) as count
         FROM dream_journal
@@ -164,7 +166,7 @@ def get_analytics(user_id):
         row["dominant_emotion"]: row["count"] for row in mood_rows
     }
 
-    # Last 7 days emotion frequency
+    # Emotion frequency (last 7 days)
     cursor.execute("""
         SELECT dominant_emotion, COUNT(*) as count
         FROM dream_journal
@@ -180,16 +182,36 @@ def get_analytics(user_id):
 
     db.close()
 
-    # Simple mental sustainability index
+    # Mental Sustainability Index
     mental_index = min(total_dreams * 5, 100)
+
+    # ---------------- AI + CALM / STRESS ----------------
+    ai_data = generate_ai_agent_response(user_id)
+
+    calm_emotions = ["happy", "peaceful", "refreshed", "energized"]
+    calm_count = 0
+    stress_count = 0
+
+    for emotion, count in ai_data["week_summary"]["emotion_summary"].items():
+        if emotion.lower() in calm_emotions:
+            calm_count += count
+        else:
+            stress_count += count
+
+    total = calm_count + stress_count or 1
+    calm_pct = round((calm_count / total) * 100)
+    stress_pct = 100 - calm_pct
 
     return jsonify({
         "mental_index": mental_index,
         "mood_distribution": mood_distribution,
-        "emotion_frequency": emotion_frequency
+        "emotion_frequency": emotion_frequency,
+        "calm_stress_distribution": {
+            "Calm State": calm_pct,
+            "Stress State": stress_pct
+        },
+        "ai_insight": ai_data["ai_insight"]
     })
-
-
 
 # ---------------- CREATE ENTRY ----------------
 @app.route("/api/entries", methods=["POST"])
