@@ -1,25 +1,34 @@
 from datetime import datetime, timedelta
-from database import get_db_connection
+import sqlite3
+import os
 
+# ---------------- DB CONFIG ----------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "dreambalance.db")
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# ---------------- FETCH LAST 7 DAYS ----------------
 def fetch_last_week_entries(user_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    start_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-
     cursor.execute("""
-        SELECT dominant_emotion, entry_date
-        FROM DreamJournal
+        SELECT dominant_emotion
+        FROM dream_journal
         WHERE user_id = ?
-        AND entry_date >= ?
-    """, (user_id, start_date))
+        AND entry_date >= date('now','-7 day')
+    """, (user_id,))
 
     rows = cursor.fetchall()
     conn.close()
 
     return rows
 
-
+# ---------------- ANALYZE EMOTIONS ----------------
 def analyze_emotions(entries):
     emotion_count = {}
 
@@ -41,10 +50,11 @@ def analyze_emotions(entries):
         "emotion_summary": emotion_count
     }
 
-
-
+# ---------------- GENERATE AI INSIGHT ----------------
 def generate_insight(dominant_emotion):
-    if dominant_emotion.lower() in ["fear", "anxious", "scared"]:
+    emotion = dominant_emotion.lower()
+
+    if emotion in ["fear", "anxious", "scared"]:
         return {
             "reasoning": (
                 "Your recent dreams show fear-related emotions. "
@@ -57,7 +67,7 @@ def generate_insight(dominant_emotion):
             ]
         }
 
-    elif dominant_emotion.lower() in ["sad", "sadness"]:
+    elif emotion in ["sad", "sadness"]:
         return {
             "reasoning": (
                 "Your dreams reflect sadness, which may suggest emotional fatigue."
@@ -69,7 +79,7 @@ def generate_insight(dominant_emotion):
             ]
         }
 
-    elif dominant_emotion.lower() in ["joy", "happy"]:
+    elif emotion in ["joy", "happy", "peaceful", "refreshed"]:
         return {
             "reasoning": (
                 "Your dreams show positive emotional patterns, indicating balance and recovery."
@@ -93,7 +103,7 @@ def generate_insight(dominant_emotion):
             ]
         }
 
-
+# ---------------- MAIN AGENT RESPONSE ----------------
 def generate_ai_agent_response(user_id):
     entries = fetch_last_week_entries(user_id)
 
@@ -108,4 +118,3 @@ def generate_ai_agent_response(user_id):
         },
         "ai_insight": insight
     }
-
