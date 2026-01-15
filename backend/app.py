@@ -138,6 +138,36 @@ def get_calendar_entries(user_id):
 
     return jsonify([dict(row) for row in rows])
 
+@app.route("/api/analytics", methods=["GET"])
+@token_required
+def analytics(user_id):
+    db = get_db()
+    cursor = db.cursor()
+
+    # Total dreams
+    cursor.execute(
+        "SELECT COUNT(*) as total FROM dream_journal WHERE user_id = ?",
+        (user_id,)
+    )
+    total = cursor.fetchone()["total"]
+
+    # Mood distribution
+    cursor.execute("""
+        SELECT dominant_emotion, COUNT(*) as count
+        FROM dream_journal
+        WHERE user_id = ?
+        GROUP BY dominant_emotion
+    """, (user_id,))
+    moods = [dict(row) for row in cursor.fetchall()]
+
+    db.close()
+
+    return jsonify({
+        "total_dreams": total,
+        "mood_distribution": moods
+    })
+
+
 # ---------------- CREATE ENTRY ----------------
 @app.route("/api/entries", methods=["POST"])
 @token_required
