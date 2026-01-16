@@ -161,9 +161,15 @@ function openEditEntry(entryId) {
     if (!entry) return;
 
     editingEntryId = entry.id;
-    document.getElementById("dream-title").value = entry.user_title;
-    document.getElementById("dream-desc").value = entry.dream_text || "";
-    selectedMood = entry.feeling_after_waking;
+
+document.getElementById("dream-title").value =
+    entry.dream_text ? entry.dream_text.slice(0, 30) : "";
+
+document.getElementById("dream-desc").value =
+    entry.dream_text || "";
+
+selectedMood = entry.feeling_after_waking;
+
 
     document.querySelectorAll(".mood-btn").forEach(btn => {
         btn.classList.toggle("active", btn.textContent === selectedMood);
@@ -182,10 +188,10 @@ async function saveNewEntry() {
     }
 
     const payload = {
-        title: document.getElementById("dream-title").value.trim(),
-        description: document.getElementById("dream-desc").value.trim(),
-        mood: selectedMood
-    };
+    description: document.getElementById("dream-desc").value.trim(),
+    mood: selectedMood
+};
+
 
     const isEdit = editingEntryId !== null;
     const url = isEdit
@@ -226,8 +232,19 @@ if (!res.ok) {
 // ---------------- UI HELPERS ----------------
 
 function openNewEntryModal() {
+    // Clear only if creating NEW entry
+    if (editingEntryId === null) {
+        document.getElementById("dream-title").value = "";
+        document.getElementById("dream-desc").value = "";
+        selectedMood = null;
+        document.querySelectorAll(".mood-btn").forEach(b =>
+            b.classList.remove("active")
+        );
+    }
+
     document.getElementById("new-entry-modal").classList.remove("hidden");
 }
+
 
 function closeNewEntryModal() {
     document.getElementById("new-entry-modal").classList.add("hidden");
