@@ -139,7 +139,7 @@ def get_calendar_entries(user_id):
 
     return jsonify([dict(row) for row in rows])
 
-# ---------------- ANALYTICS (FINAL VERSION) ----------------
+# ---------------- ANALYTICS (FIXED) ----------------
 @app.route("/api/analytics", methods=["GET"])
 @token_required
 def get_analytics(user_id):
@@ -171,7 +171,7 @@ def get_analytics(user_id):
         SELECT dominant_emotion, COUNT(*) as count
         FROM dream_journal
         WHERE user_id = ?
-        AND entry_date >= date('now','-7 day')
+          AND entry_date >= date('now','-7 day')
         GROUP BY dominant_emotion
     """, (user_id,))
     recent_rows = cursor.fetchall()
@@ -185,31 +185,14 @@ def get_analytics(user_id):
     # Mental Sustainability Index
     mental_index = min(total_dreams * 5, 100)
 
-    # ---------------- AI + CALM / STRESS ----------------
+    # ---------------- AI AGENT (FINAL SOURCE OF TRUTH) ----------------
     ai_data = generate_ai_agent_response(user_id)
-
-    calm_emotions = ["happy", "peaceful", "refreshed", "energized"]
-    calm_count = 0
-    stress_count = 0
-
-    for emotion, count in ai_data["week_summary"]["emotion_summary"].items():
-        if emotion.lower() in calm_emotions:
-            calm_count += count
-        else:
-            stress_count += count
-
-    total = calm_count + stress_count or 1
-    calm_pct = round((calm_count / total) * 100)
-    stress_pct = 100 - calm_pct
 
     return jsonify({
         "mental_index": mental_index,
         "mood_distribution": mood_distribution,
         "emotion_frequency": emotion_frequency,
-        "calm_stress_distribution": {
-            "Calm State": calm_pct,
-            "Stress State": stress_pct
-        },
+        "calm_stress_distribution": ai_data["state_distribution"],
         "ai_insight": ai_data["ai_insight"]
     })
 
