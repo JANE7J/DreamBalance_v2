@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 import sqlite3
 import os
 
@@ -32,8 +31,12 @@ def fetch_last_week_entries(user_id):
 
 # ---------------- ANALYZE CALM vs STRESS ----------------
 def analyze_emotions(entries):
-    calm_emotions = {"Happy", "Peaceful", "Refreshed", "Energized"}
-    stress_emotions = {"Sad", "Anxious", "Scared", "Confused", "Tired"}
+    calm_emotions = {
+        "happy", "peaceful", "refreshed", "energized"
+    }
+    stress_emotions = {
+        "sad", "anxious", "scared", "confused", "tired", "fear"
+    }
 
     calm_count = 0
     stress_count = 0
@@ -42,6 +45,8 @@ def analyze_emotions(entries):
         emotion = row["dominant_emotion"]
         if not emotion:
             continue
+
+        emotion = emotion.strip().lower()
 
         if emotion in calm_emotions:
             calm_count += 1
@@ -54,13 +59,15 @@ def analyze_emotions(entries):
         return {
             "calm_percentage": 0,
             "stress_percentage": 0,
-            "dominant_state": "Calm"
+            "dominant_state": "Calm State"
         }
 
     calm_pct = round((calm_count / total) * 100)
     stress_pct = round((stress_count / total) * 100)
 
-    dominant_state = "Calm" if calm_pct >= stress_pct else "Stressed"
+    dominant_state = (
+        "Calm State" if calm_pct >= stress_pct else "Stress State"
+    )
 
     return {
         "calm_percentage": calm_pct,
@@ -71,21 +78,21 @@ def analyze_emotions(entries):
 
 # ---------------- GENERATE AI INSIGHT ----------------
 def generate_insight(dominant_state):
-    if dominant_state == "Stressed":
+    if dominant_state == "Stress State":
         return {
-            "reasoning": "Your emotional patterns suggest elevated stress levels this week.",
+            "reasoning": "Your emotional patterns indicate elevated stress levels this week.",
             "recommendations": [
                 "Practice relaxation before sleep",
-                "Limit screen time at night",
+                "Reduce screen time at night",
                 "Try breathing or meditation exercises"
             ]
         }
 
     return {
-        "reasoning": "Your dreams reflect a generally calm and balanced emotional state.",
+        "reasoning": "Your dreams suggest a calm and balanced mental state.",
         "recommendations": [
-            "Maintain your current routine",
-            "Continue healthy sleep habits",
+            "Maintain your current sleep routine",
+            "Continue positive daily habits",
             "Practice gratitude before sleep"
         ]
     }
@@ -102,5 +109,6 @@ def generate_ai_agent_response(user_id):
             "Calm State": analysis["calm_percentage"],
             "Stress State": analysis["stress_percentage"]
         },
+        "dominant_state": analysis["dominant_state"],
         "ai_insight": insight
     }
