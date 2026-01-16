@@ -139,7 +139,7 @@ def get_calendar_entries(user_id):
 
     return jsonify([dict(row) for row in rows])
 
-# ---------------- ANALYTICS (FIXED) ----------------
+# ---------------- ANALYTICS (FINAL & SAFE) ----------------
 @app.route("/api/analytics", methods=["GET"])
 @token_required
 def get_analytics(user_id):
@@ -153,7 +153,7 @@ def get_analytics(user_id):
     )
     total_dreams = cursor.fetchone()["total"]
 
-    # Mood distribution (all time)
+    # Mood distribution (all-time)
     cursor.execute("""
         SELECT dominant_emotion, COUNT(*) as count
         FROM dream_journal
@@ -185,25 +185,24 @@ def get_analytics(user_id):
     # Mental Sustainability Index
     mental_index = min(total_dreams * 5, 100)
 
-    # ---------------- AI AGENT (FINAL SOURCE OF TRUTH) ----------------
+    # ---------------- AI AGENT (SINGLE SOURCE OF TRUTH) ----------------
     ai_data = generate_ai_agent_response(user_id)
 
-return jsonify({
-    "mental_index": mental_index,
-    "mood_distribution": mood_distribution,
-    "emotion_frequency": emotion_frequency,
+    return jsonify({
+        "mental_index": mental_index,
+        "mood_distribution": mood_distribution,
+        "emotion_frequency": emotion_frequency,
 
-    # Calm vs Stress donut
-    "calm_stress_distribution": ai_data["state_distribution"],
+        # Calm vs Stress donut
+        "calm_stress_distribution": ai_data["state_distribution"],
 
-    # AI Insight (weekly + recent-aware)
-    "ai_insight": {
-        "reasoning": ai_data["ai_insight"]["reasoning"],
-        "recommendations": ai_data["ai_insight"]["recommendations"],
-        "dominant_state": ai_data["dominant_state"]
-    }
-})
-
+        # AI Insight (weekly + recent-aware)
+        "ai_insight": {
+            "reasoning": ai_data["ai_insight"]["reasoning"],
+            "recommendations": ai_data["ai_insight"]["recommendations"],
+            "dominant_state": ai_data["dominant_state"]
+        }
+    })
 
 # ---------------- CREATE ENTRY ----------------
 @app.route("/api/entries", methods=["POST"])
