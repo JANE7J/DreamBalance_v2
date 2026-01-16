@@ -188,13 +188,22 @@ def get_analytics(user_id):
     # ---------------- AI AGENT (FINAL SOURCE OF TRUTH) ----------------
     ai_data = generate_ai_agent_response(user_id)
 
-    return jsonify({
-        "mental_index": mental_index,
-        "mood_distribution": mood_distribution,
-        "emotion_frequency": emotion_frequency,
-        "calm_stress_distribution": ai_data["state_distribution"],
-        "ai_insight": ai_data["ai_insight"]
-    })
+return jsonify({
+    "mental_index": mental_index,
+    "mood_distribution": mood_distribution,
+    "emotion_frequency": emotion_frequency,
+
+    # Calm vs Stress donut
+    "calm_stress_distribution": ai_data["state_distribution"],
+
+    # AI Insight (weekly + recent-aware)
+    "ai_insight": {
+        "reasoning": ai_data["ai_insight"]["reasoning"],
+        "recommendations": ai_data["ai_insight"]["recommendations"],
+        "dominant_state": ai_data["dominant_state"]
+    }
+})
+
 
 # ---------------- CREATE ENTRY ----------------
 @app.route("/api/entries", methods=["POST"])
