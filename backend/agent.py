@@ -12,7 +12,7 @@ def get_db_connection():
     return conn
 
 
-# ---------------- FETCH LAST 7 DAYS (ORDERED) ----------------
+# ---------------- FETCH LAST 7 DAYS (ORDERED BY DATE DESC) ----------------
 def fetch_last_week_entries(user_id):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -51,6 +51,7 @@ def analyze_emotions(entries):
 
     total = calm_count + stress_count
 
+    # No usable data
     if total == 0:
         return {
             "calm_percentage": 0,
@@ -62,7 +63,7 @@ def analyze_emotions(entries):
     calm_pct = round((calm_count / total) * 100)
     stress_pct = round((stress_count / total) * 100)
 
-    # Normal weekly dominance
+    # ✅ WEEKLY DOMINANCE
     if calm_pct > stress_pct:
         return {
             "calm_percentage": calm_pct,
@@ -79,8 +80,9 @@ def analyze_emotions(entries):
             "tie_breaker": "weekly"
         }
 
-    # 🔥 TIE → USE MOST RECENT DREAM
-    latest_emotion = entries[0]["dominant_emotion"].strip().lower()
+    # 🔥 TIE (50–50) → MOST RECENT *DATE* WINS
+    latest_emotion = entries[0]["dominant_emotion"]
+    latest_emotion = latest_emotion.strip().lower() if latest_emotion else ""
 
     dominant_state = (
         "Calm State"
@@ -102,7 +104,10 @@ def generate_insight(dominant_state, tie_breaker):
         reasoning = (
             "Overall, your dreams this week indicate elevated stress levels."
             if tie_breaker == "weekly"
-            else "Your overall emotions were balanced this week, but your most recent dream reflects stress."
+            else (
+                "Your weekly emotions are evenly balanced, "
+                "but your most recent dream reflects stress."
+            )
         )
 
         return {
@@ -117,7 +122,10 @@ def generate_insight(dominant_state, tie_breaker):
     reasoning = (
         "Overall, your dreams this week suggest a calm and balanced mental state."
         if tie_breaker == "weekly"
-        else "Your overall emotions were balanced this week, but your most recent dream reflects calmness."
+        else (
+            "Your weekly emotions are evenly balanced, "
+            "but your most recent dream reflects calmness."
+        )
     )
 
     return {
@@ -133,6 +141,7 @@ def generate_insight(dominant_state, tie_breaker):
 # ---------------- MAIN AGENT RESPONSE ----------------
 def generate_ai_agent_response(user_id):
     entries = fetch_last_week_entries(user_id)
+
     analysis = analyze_emotions(entries)
 
     insight = generate_insight(
