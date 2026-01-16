@@ -8,6 +8,8 @@ let authHeader = {};
 let selectedMood = null;
 let editingEntryId = null;
 
+// ---------------- INIT ----------------
+
 document.addEventListener("DOMContentLoaded", () => {
     const token = localStorage.getItem("authToken");
     if (!token) {
@@ -30,10 +32,6 @@ function setupEventListeners() {
 
     document.getElementById("next-month-btn")
         ?.addEventListener("click", () => changeMonth(1));
-
-    // ✅ LOGOUT FIX
-    document.getElementById("logout-btn")
-        ?.addEventListener("click", logout);
 }
 
 // ---------------- CALENDAR ----------------
@@ -94,27 +92,17 @@ async function renderCalendar() {
 
 async function fetchMonthlyData(year, month) {
     const res = await fetch(
-    `${API_URL}/api/entries/calendar?year=${year}&month=${month}`,
-    { headers: authHeader }
-);
+        `${API_URL}/api/entries/calendar?year=${year}&month=${month}`,
+        { headers: authHeader }
+    );
 
-if (res.status === 401) {
-    logout();
-    return;
-}
+    if (res.status === 401) {
+        logout();
+        return;
+    }
 
-const text = await res.text();
-let entries;
-
-try {
-    entries = JSON.parse(text);
-} catch {
-    console.error("Invalid response from server:", text);
-    return;
-}
-
-monthlyEntries = {};
-
+    const entries = await res.json();
+    monthlyEntries = {};
 
     entries.forEach(e => {
         if (!monthlyEntries[e.entry_date]) monthlyEntries[e.entry_date] = [];
@@ -127,11 +115,6 @@ function selectDate(day, month, year) {
 
     document.getElementById("selected-date-header").textContent =
         new Date(year, month, day).toLocaleDateString("en-US", { month: "long", day: "numeric" });
-
-    document.querySelectorAll(".day.selected").forEach(el => el.classList.remove("selected"));
-    document.querySelectorAll("#calendar-grid .day").forEach(el => {
-        if (parseInt(el.textContent) === day) el.classList.add("selected");
-    });
 
     const list = document.getElementById("daily-entries-list");
     list.innerHTML = "";
@@ -162,36 +145,33 @@ function openEditEntry(entryId) {
 
     editingEntryId = entry.id;
 
-document.getElementById("dream-title").value =
-    entry.dream_text ? entry.dream_text.slice(0, 30) : "";
+    document.getElementById("dream-title").value = "";
+    document.getElementById("dream-desc").value = entry.dream_text || "";
 
-document.getElementById("dream-desc").value =
-    entry.dream_text || "";
+    selectedMood = entry.feeling_after_waking;
 
-selectedMood = entry.feeling_after_waking;
-
-
-    document.querySelectorAll(".mood-btn").forEach(btn => {
-        btn.classList.toggle("active", btn.textContent === selectedMood);
-    });
+    document.querySelectorAll(".mood-btn").forEach(btn =>
+        btn.classList.toggle("active", btn.textContent === selectedMood)
+    );
 
     document.getElementById("save-btn").textContent = "Update Dream";
-    openNewEntryModal();
+    document.getElementById("delete-btn").classList.remove("hidden");
+
+    document.getElementById("new-entry-modal").classList.remove("hidden");
 }
 
 // ---------------- SAVE / UPDATE ----------------
 
 async function saveNewEntry() {
-    if (!selectedDateStr || !selectedMood) {
-        alert("Please complete all fields");
+    if (!selectedMood) {
+        alert("Please select how you felt after waking up.");
         return;
     }
 
     const payload = {
-    description: document.getElementById("dream-desc").value.trim(),
-    mood: selectedMood
-};
-
+        description: document.getElementById("dream-desc").value.trim(),
+        mood: selectedMood
+    };
 
     const isEdit = editingEntryId !== null;
     const url = isEdit
@@ -201,30 +181,32 @@ async function saveNewEntry() {
     if (!isEdit) payload.entry_date = selectedDateStr;
 
     const res = await fetch(url, {
-    method: isEdit ? "PUT" : "POST",
-    headers: { ...authHeader, "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-});
+        method: isEdit ? "PUT" : "POST",
+        headers: { ...authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
 
-const text = await res.text();
-let data;
+    if (!res.ok) {
+        alert("Save failed");
+        return;
+    }
 
-try {
-    data = JSON.parse(text);
-} catch {
-    alert("Server error. Please try again.");
-    return;
+    closeNewEntryModal();
+    renderCalendar();
 }
 
-if (!res.ok) {
-    alert(data.error || "Save failed");
-    return;
-}
+// ---------------- DELETE ----------------
 
+async function deleteEntry() {
+    if (!editingEntryId) return;
 
-    editingEntryId = null;
-    selectedMood = null;
-    document.getElementById("save-btn").textContent = "Save Dream";
+    if (!confirm("Delete this dream?")) return;
+
+    await fetch(`${API_URL}/api/entries/${editingEntryId}`, {
+        method: "DELETE",
+        headers: authHeader
+    });
+
     closeNewEntryModal();
     renderCalendar();
 }
@@ -232,19 +214,18 @@ if (!res.ok) {
 // ---------------- UI HELPERS ----------------
 
 function openNewEntryModal() {
-    // Clear only if creating NEW entry
-    if (editingEntryId === null) {
-        document.getElementById("dream-title").value = "";
-        document.getElementById("dream-desc").value = "";
-        selectedMood = null;
-        document.querySelectorAll(".mood-btn").forEach(b =>
-            b.classList.remove("active")
-        );
-    }
+    editingEntryId = null;
+    selectedMood = null;
+
+    document.getElementById("dream-title").value = "";
+    document.getElementById("dream-desc").value = "";
+
+    document.querySelectorAll(".mood-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById("save-btn").textContent = "Save Dream";
+    document.getElementById("delete-btn").classList.add("hidden");
 
     document.getElementById("new-entry-modal").classList.remove("hidden");
 }
-
 
 function closeNewEntryModal() {
     document.getElementById("new-entry-modal").classList.add("hidden");
@@ -257,7 +238,7 @@ function setMood(button, mood) {
 }
 
 function getEmotionColor(emotion) {
-    const map = {
+    return {
         Happy: "bg-yellow-400",
         Peaceful: "bg-teal-400",
         Energized: "bg-green-400",
@@ -265,8 +246,7 @@ function getEmotionColor(emotion) {
         Anxious: "bg-purple-400",
         Scared: "bg-red-400",
         Confused: "bg-gray-400"
-    };
-    return map[emotion] || "bg-white";
+    }[emotion] || "bg-white";
 }
 
 // ---------------- AUTH ----------------
@@ -278,7 +258,6 @@ function initializeUserProfile() {
 }
 
 function logout() {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userName");
+    localStorage.clear();
     window.location.href = "index.html";
 }
