@@ -139,7 +139,7 @@ def get_calendar_entries(user_id):
 
     return jsonify([dict(row) for row in rows])
 
-# ---------------- ANALYTICS (FINAL & SAFE) ----------------
+# ---------------- ANALYTICS ----------------
 @app.route("/api/analytics", methods=["GET"])
 @token_required
 def get_analytics(user_id):
@@ -185,18 +185,14 @@ def get_analytics(user_id):
     # Mental Sustainability Index
     mental_index = min(total_dreams * 5, 100)
 
-    # ---------------- AI AGENT (SINGLE SOURCE OF TRUTH) ----------------
+    # AI Agent
     ai_data = generate_ai_agent_response(user_id)
 
     return jsonify({
         "mental_index": mental_index,
         "mood_distribution": mood_distribution,
         "emotion_frequency": emotion_frequency,
-
-        # Calm vs Stress donut
         "calm_stress_distribution": ai_data["state_distribution"],
-
-        # AI Insight (weekly + recent-aware)
         "ai_insight": {
             "reasoning": ai_data["ai_insight"]["reasoning"],
             "recommendations": ai_data["ai_insight"]["recommendations"],
@@ -230,6 +226,43 @@ def create_entry(user_id):
     db.close()
 
     return jsonify({"message": "Entry saved"}), 201
+
+# ---------------- UPDATE ENTRY (✅ FIXED) ----------------
+@app.route("/api/entries/<int:entry_id>", methods=["PUT"])
+@token_required
+def update_entry(user_id, entry_id):
+    data = request.get_json()
+
+    entry_date = data.get("entry_date")
+    description = data.get("description")
+    mood = data.get("mood")
+
+    if not entry_date or not mood:
+        return jsonify({"error": "Missing fields"}), 400
+
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""
+        UPDATE dream_journal
+        SET entry_date = ?,
+            dream_text = ?,
+            feeling_after_waking = ?,
+            dominant_emotion = ?
+        WHERE id = ? AND user_id = ?
+    """, (
+        entry_date,
+        description,
+        mood,
+        mood,
+        entry_id,
+        user_id
+    ))
+
+    db.commit()
+    db.close()
+
+    return jsonify({"message": "Entry updated successfully"}), 200
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
