@@ -1,4 +1,5 @@
 // --- Core Application Logic for the Calendar / Journal Page ---
+
 const API_URL = "https://dreambalance-backend.onrender.com";
 
 let currentDate = new Date();
@@ -12,12 +13,15 @@ let editingEntryId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     const token = localStorage.getItem("authToken");
+
     if (!token) {
         window.location.href = "index.html";
         return;
     }
 
-    authHeader = { Authorization: `Bearer ${token}` };
+    authHeader = {
+        Authorization: `Bearer ${token}`
+    };
 
     setupEventListeners();
     initializeUserProfile();
@@ -27,11 +31,17 @@ document.addEventListener("DOMContentLoaded", () => {
 // ---------------- EVENT LISTENERS ----------------
 
 function setupEventListeners() {
-    document.getElementById("prev-month-btn")
+    document
+        .getElementById("prev-month-btn")
         ?.addEventListener("click", () => changeMonth(-1));
 
-    document.getElementById("next-month-btn")
+    document
+        .getElementById("next-month-btn")
         ?.addEventListener("click", () => changeMonth(1));
+
+    document
+        .getElementById("logout-btn")
+        ?.addEventListener("click", logout);
 }
 
 // ---------------- CALENDAR ----------------
@@ -53,9 +63,11 @@ async function renderCalendar() {
     const calendarGrid = document.getElementById("calendar-grid");
     calendarGrid.innerHTML = "";
 
-    ["SUN","MON","TUE","WED","THU","FRI","SAT"].forEach(d =>
-        calendarGrid.innerHTML += `<div class="text-xs text-gray-400 font-bold">${d}</div>`
-    );
+    ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].forEach(day => {
+        calendarGrid.innerHTML += `
+            <div class="text-xs text-gray-400 font-bold">${day}</div>
+        `;
+    });
 
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -70,24 +82,36 @@ async function renderCalendar() {
         dayEl.className = "day";
 
         const cellDate = new Date(year, month, day);
+
         if (cellDate <= new Date()) {
-            dayEl.addEventListener("click", () => selectDate(day, month, year));
+            dayEl.addEventListener("click", () =>
+                selectDate(day, month, year)
+            );
         } else {
             dayEl.classList.add("disabled");
         }
 
-        const dateStr = `${year}-${String(month + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
         if (monthlyEntries[dateStr]) {
             dayEl.innerHTML += `
                 <div class="absolute bottom-1.5 h-1.5 w-1.5 rounded-full
-                ${getEmotionColor(monthlyEntries[dateStr][0].dominant_emotion)}"></div>`;
+                    ${getEmotionColor(
+                        monthlyEntries[dateStr][0].dominant_emotion
+                    )}">
+                </div>
+            `;
         }
 
         calendarGrid.appendChild(dayEl);
     }
 
-    const d = new Date(selectedDateStr);
-    selectDate(d.getDate(), d.getMonth(), d.getFullYear());
+    const selected = new Date(selectedDateStr);
+    selectDate(
+        selected.getDate(),
+        selected.getMonth(),
+        selected.getFullYear()
+    );
 }
 
 async function fetchMonthlyData(year, month) {
@@ -101,70 +125,109 @@ async function fetchMonthlyData(year, month) {
         return;
     }
 
-    const entries = await res.json();
+    const text = await res.text();
+    let entries;
+
+    try {
+        entries = JSON.parse(text);
+    } catch {
+        console.error("Invalid response from server:", text);
+        return;
+    }
+
     monthlyEntries = {};
 
-    entries.forEach(e => {
-        if (!monthlyEntries[e.entry_date]) monthlyEntries[e.entry_date] = [];
-        monthlyEntries[e.entry_date].push(e);
+    entries.forEach(entry => {
+        if (!monthlyEntries[entry.entry_date]) {
+            monthlyEntries[entry.entry_date] = [];
+        }
+        monthlyEntries[entry.entry_date].push(entry);
     });
 }
 
 function selectDate(day, month, year) {
-    selectedDateStr = `${year}-${String(month + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    selectedDateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
     document.getElementById("selected-date-header").textContent =
-        new Date(year, month, day).toLocaleDateString("en-US", { month: "long", day: "numeric" });
+        new Date(year, month, day).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric"
+        });
+
+    document
+        .querySelectorAll(".day.selected")
+        .forEach(el => el.classList.remove("selected"));
+
+    document
+        .querySelectorAll("#calendar-grid .day")
+        .forEach(el => {
+            if (parseInt(el.textContent) === day) {
+                el.classList.add("selected");
+            }
+        });
 
     const list = document.getElementById("daily-entries-list");
     list.innerHTML = "";
 
     if (!monthlyEntries[selectedDateStr]) {
-        list.innerHTML = `<p class="text-gray-400 text-center pt-16">No entries for this date.</p>`;
+        list.innerHTML = `
+            <p class="text-gray-400 text-center pt-16">
+                No entries for this date.
+            </p>
+        `;
         return;
     }
 
     monthlyEntries[selectedDateStr].forEach(entry => {
         list.innerHTML += `
-            <div class="p-4 rounded-lg bg-black/20 hover:bg-white/10 cursor-pointer"
-                 onclick="openEditEntry(${entry.id})">
+            <div
+                class="p-4 rounded-lg bg-black/20 hover:bg-white/10 cursor-pointer"
+                onclick="openEditEntry(${entry.id})"
+            >
                 <p class="font-bold">Dream Entry</p>
-                <p class="text-sm text-gray-400">${entry.feeling_after_waking}</p>
+                <p class="text-sm text-gray-400">
+                    ${entry.feeling_after_waking}
+                </p>
                 <p class="text-xs text-gray-500 mt-1 line-clamp-2">
                     ${entry.dream_text || "No description"}
                 </p>
-            </div>`;
+            </div>
+        `;
     });
 }
 
 // ---------------- EDIT ENTRY ----------------
 
 function openEditEntry(entryId) {
-    const entry = monthlyEntries[selectedDateStr]?.find(e => e.id === entryId);
+    const entry = monthlyEntries[selectedDateStr]?.find(
+        e => e.id === entryId
+    );
+
     if (!entry) return;
 
     editingEntryId = entry.id;
 
-    document.getElementById("dream-title").value = "";
-    document.getElementById("dream-desc").value = entry.dream_text || "";
+    document.getElementById("dream-title").value =
+        entry.dream_text ? entry.dream_text.slice(0, 30) : "";
+
+    document.getElementById("dream-desc").value =
+        entry.dream_text || "";
 
     selectedMood = entry.feeling_after_waking;
 
-    document.querySelectorAll(".mood-btn").forEach(btn =>
-        btn.classList.toggle("active", btn.textContent === selectedMood)
-    );
+    document.querySelectorAll(".mood-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.textContent === selectedMood);
+    });
 
     document.getElementById("save-btn").textContent = "Update Dream";
-    document.getElementById("delete-btn").classList.remove("hidden");
-
-    document.getElementById("new-entry-modal").classList.remove("hidden");
+    openNewEntryModal();
 }
 
 // ---------------- SAVE / UPDATE ----------------
 
 async function saveNewEntry() {
-    if (!selectedMood) {
-        alert("Please select how you felt after waking up.");
+    if (!selectedDateStr || !selectedMood) {
+        alert("Please complete all fields");
         return;
     }
 
@@ -178,35 +241,38 @@ async function saveNewEntry() {
         ? `${API_URL}/api/entries/${editingEntryId}`
         : `${API_URL}/api/entries`;
 
-    if (!isEdit) payload.entry_date = selectedDateStr;
+    if (!isEdit) {
+        payload.entry_date = selectedDateStr;
+    }
 
     const res = await fetch(url, {
         method: isEdit ? "PUT" : "POST",
-        headers: { ...authHeader, "Content-Type": "application/json" },
+        headers: {
+            ...authHeader,
+            "Content-Type": "application/json"
+        },
         body: JSON.stringify(payload)
     });
 
-    if (!res.ok) {
-        alert("Save failed");
+    const text = await res.text();
+    let data;
+
+    try {
+        data = JSON.parse(text);
+    } catch {
+        alert("Server error. Please try again.");
         return;
     }
 
-    closeNewEntryModal();
-    renderCalendar();
-}
+    if (!res.ok) {
+        alert(data.error || "Save failed");
+        return;
+    }
 
-// ---------------- DELETE ----------------
+    editingEntryId = null;
+    selectedMood = null;
 
-async function deleteEntry() {
-    if (!editingEntryId) return;
-
-    if (!confirm("Delete this dream?")) return;
-
-    await fetch(`${API_URL}/api/entries/${editingEntryId}`, {
-        method: "DELETE",
-        headers: authHeader
-    });
-
+    document.getElementById("save-btn").textContent = "Save Dream";
     closeNewEntryModal();
     renderCalendar();
 }
@@ -214,15 +280,15 @@ async function deleteEntry() {
 // ---------------- UI HELPERS ----------------
 
 function openNewEntryModal() {
-    editingEntryId = null;
-    selectedMood = null;
+    if (editingEntryId === null) {
+        document.getElementById("dream-title").value = "";
+        document.getElementById("dream-desc").value = "";
+        selectedMood = null;
 
-    document.getElementById("dream-title").value = "";
-    document.getElementById("dream-desc").value = "";
-
-    document.querySelectorAll(".mood-btn").forEach(b => b.classList.remove("active"));
-    document.getElementById("save-btn").textContent = "Save Dream";
-    document.getElementById("delete-btn").classList.add("hidden");
+        document.querySelectorAll(".mood-btn").forEach(btn =>
+            btn.classList.remove("active")
+        );
+    }
 
     document.getElementById("new-entry-modal").classList.remove("hidden");
 }
@@ -232,13 +298,15 @@ function closeNewEntryModal() {
 }
 
 function setMood(button, mood) {
-    document.querySelectorAll(".mood-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".mood-btn").forEach(btn =>
+        btn.classList.remove("active")
+    );
     button.classList.add("active");
     selectedMood = mood;
 }
 
 function getEmotionColor(emotion) {
-    return {
+    const map = {
         Happy: "bg-yellow-400",
         Peaceful: "bg-teal-400",
         Energized: "bg-green-400",
@@ -246,7 +314,9 @@ function getEmotionColor(emotion) {
         Anxious: "bg-purple-400",
         Scared: "bg-red-400",
         Confused: "bg-gray-400"
-    }[emotion] || "bg-white";
+    };
+
+    return map[emotion] || "bg-white";
 }
 
 // ---------------- AUTH ----------------
@@ -254,10 +324,12 @@ function getEmotionColor(emotion) {
 function initializeUserProfile() {
     const name = localStorage.getItem("userName") || "User";
     document.getElementById("user-name").textContent = name;
-    document.getElementById("user-initial").textContent = name[0].toUpperCase();
+    document.getElementById("user-initial").textContent =
+        name[0].toUpperCase();
 }
 
 function logout() {
-    localStorage.clear();
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userName");
     window.location.href = "index.html";
 }
