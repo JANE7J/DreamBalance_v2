@@ -106,12 +106,8 @@ async function renderCalendar() {
         calendarGrid.appendChild(dayEl);
     }
 
-    const selected = new Date(selectedDateStr);
-    selectDate(
-        selected.getDate(),
-        selected.getMonth(),
-        selected.getFullYear()
-    );
+    const d = new Date(selectedDateStr);
+    selectDate(d.getDate(), d.getMonth(), d.getFullYear());
 }
 
 async function fetchMonthlyData(year, month) {
@@ -232,6 +228,7 @@ async function saveNewEntry() {
     }
 
     const payload = {
+        title: document.getElementById("dream-title").value.trim(),
         description: document.getElementById("dream-desc").value.trim(),
         mood: selectedMood
     };
@@ -280,16 +277,6 @@ async function saveNewEntry() {
 // ---------------- UI HELPERS ----------------
 
 function openNewEntryModal() {
-    if (editingEntryId === null) {
-        document.getElementById("dream-title").value = "";
-        document.getElementById("dream-desc").value = "";
-        selectedMood = null;
-
-        document.querySelectorAll(".mood-btn").forEach(btn =>
-            btn.classList.remove("active")
-        );
-    }
-
     document.getElementById("new-entry-modal").classList.remove("hidden");
 }
 
